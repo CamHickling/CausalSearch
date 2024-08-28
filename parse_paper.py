@@ -9,16 +9,31 @@ import re
 
 
 # Load the spaCy model
+
 nlp = spacy.load("en_core_web_sm")
 
-# Function to extract text from a PDF file
+# for using word vectors
+#nlp = spacy.load("en_core_web_trf")
+
+# Function to generate match patterns for phrases
 def generate_patterns(phrases):
+
+    #add wildcard patterns when necessary {} matches any token for [X], [Y], [M] cases
+    #also clean up output to make sure it is readible
     patterns = []
     for phrase in phrases:
         doc = nlp(phrase)
-        pattern = [{"LEMMA": token.lemma_} for token in doc if not token.is_punct and not token.is_space]
+
+        #print(textwrap.fill(f"- {[token for token in doc]}", width=75, initial_indent="\n", subsequent_indent="\t"))
+
+        pattern = [{"OP": "{1,15}"} if re.fullmatch("(X|Y|M|x|y|m)", token.text) else {"LEMMA": token.lemma_} for token in doc if not token.is_punct and not token.is_space]
         patterns.append(pattern)
+
+    #print(textwrap.fill(f"- {patterns}", width=75, initial_indent="\n", subsequent_indent="\t"))
+
     return patterns
+
+
     
 # Examples phrase patterns for testing
 '''
@@ -46,7 +61,7 @@ def clean_illegal_characters(df):
     def remove_illegal_chars(value):
         # Convert value to string and then remove illegal characters
         value_str = str(value)
-        return re.sub(r'[^\x20-\x7E]', '', value_str)  # Keep only printable ASCII characters
+        return re.sub(r'[^\x20-\x7E]', ' ', value_str)  # Keep only printable ASCII characters
     
     # Apply the function to each element in the DataFrame
     return df.apply(lambda col: col.apply(remove_illegal_chars))
@@ -80,7 +95,29 @@ def extract_text_from_pdf(pdf_path):
     text = ""
     for page_num in range(len(doc)):
         page = doc.load_page(page_num)
-        text += page.get_text()
+        page = page.get_text()
+        
+        # Remove hyphenated words that break across lines
+        page = page.replace("-\n", "")
+        
+        # Replace any other newlines with spaces
+        page = page.replace("\n", " ")
+
+        # Remove any citations like (Author, YYYY)
+        #page = re.sub(r"/ \((((([a-zA-Z0-9_]+((& [a-zA-Z0-9_]+)|(,? et al.))?, )?\d{4}(, p\.\d+)?)|(p\.\d+));?)+\)/g", 'THIS IS A SUB ***********', page)
+        page = re.sub("\s\([^(]*?\d{4}.*?\)", "", page)
+
+        text += page
+
+    '''
+    for page in doc:
+        output = page.get_text("blocks")
+        previous_block_id = 0 # Set a variable to mark the block id
+        for a, block in output:
+            print(block)
+    '''
+
+
     return text
 
 def search_for_keyphrases(pdf_path, wordbank_path):

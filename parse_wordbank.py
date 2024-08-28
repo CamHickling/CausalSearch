@@ -56,7 +56,7 @@ def extract_phrases(path):
 if __name__ == "__main__":
     # Load the DOCX file
     desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop') 
-    file_name = '/wordbanktest.docx'
+    file_name = '/fullwordbank.docx'
     file_path = desktop + file_name
 
     causal_phrases, mediation_phrases = extract_phrases(file_path)
